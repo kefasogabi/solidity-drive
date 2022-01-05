@@ -1,14 +1,15 @@
 import React, { Component } from "react";
 import SolidityDriveContract from "./contracts/SolidityDrive.json";
-import getWeb3 from "./getWeb3";
+import getWeb3 from "./utils/getWeb3";
 import { StyledDropZone } from 'react-drop-zone';
 import { FileIcon, defaultStyles } from 'react-file-icon'; 
 import "react-drop-zone/dist/styles.css";
 import "bootstrap/dist/css/bootstrap.css";
 import { Table } from 'reactstrap';
 import fileReaderPullStream from 'pull-file-reader';
-import ipfs from './ipfs';
+import ipfs from './utils/ipfs';
 import "./App.css";
+import { globSource } from "ipfs-http-client";
 
 class App extends Component {
   state = { solidityDrive: [], web3: null, accounts: null, contract: null };
@@ -24,6 +25,7 @@ class App extends Component {
       // Get the contract instance.
       const networkId = await web3.eth.net.getId();
       const deployedNetwork = SolidityDriveContract.networks[networkId];
+     
       const instance = new web3.eth.Contract(
         SolidityDriveContract.abi,
         deployedNetwork && deployedNetwork.address,
@@ -57,15 +59,15 @@ class App extends Component {
   getFiles = async () => { 
 
     try {
-      const { account, contract } = this.state;
-      let filesLength = await contract.methods.getLength().call({from:account[0]});
+      const { accounts, contract } = this.state;
+      let filesLength = await contract.methods.getLength().call({from:accounts[0]});
       let files = [];
+
   
       for(let i = 0; i < filesLength; i++){
-        let file = await contract.methods.getFile(i).call({from:account[0]});
+        let file = await contract.methods.getFile(i).call({from:accounts[0]});
         files.push(file);
       }
-  
       this.setState({solidityDrive: files});
   
     } catch (error) {
@@ -76,11 +78,35 @@ class App extends Component {
 
   onDrop = async (file) => {
     try {
-      const { contract, account } = this.state;
-      const stream = fileReaderPullStream(file);
-      const result = await ipfs.add(stream);
+      const { contract, accounts } = this.state;
+      // const stream = fileReaderPullStream(file);
 
+      const reader = new window.FileReader()
+      reader.readAsArrayBuffer(file)
 
+      reader.onloadend = () => {
+        this.setState({ buffer: Buffer(reader.result) })
+        console.log('buffer', this.state.buffer)
+
+        ipfs.add(this.state.buffer, async (error, result) => {
+          console.log('Ipfs result', result)
+          if(error) {
+            console.error(error)
+            return
+          }
+
+          const timestap = Math.round(+new Date() / 1000);
+          const type =  file.name.substr(file.name.lastIndexOf(".")+1);
+
+          console.log(accounts[0]);
+          
+          let uploaded = await contract.methods.add(result[0].hash, file.name, type, timestap).send({ from: accounts[0], gas: 300000 });
+
+          console.log(uploaded);
+          this.getFiles();
+        })
+      }
+     
     } catch (error) {
       console.log(error);
     }
