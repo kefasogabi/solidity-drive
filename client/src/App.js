@@ -10,6 +10,7 @@ import fileReaderPullStream from 'pull-file-reader';
 import ipfs from './utils/ipfs';
 import "./App.css";
 import { globSource } from "ipfs-http-client";
+import Moment from "react-moment";
 
 class App extends Component {
   state = { solidityDrive: [], web3: null, accounts: null, contract: null };
@@ -34,6 +35,15 @@ class App extends Component {
       // Set web3, accounts, and contract to the state, and then proceed with an
       // example of interacting with the contract's methods.
       this.setState({ web3, accounts, contract: instance }, this.getFiles);
+
+      //  web3.currentProvider.publicConfigStore.on('update', async () => {
+        
+      //   const changedAccounts = await web3.eth.getAccounts();
+      //   console.error(changedAccounts);
+      //   this.setState({accounts:changedAccounts});
+      //   this.getFiles();
+      // })
+
     } catch (error) {
       // Catch any errors for any of the above operations.
       alert(
@@ -69,9 +79,9 @@ class App extends Component {
         files.push(file);
       }
       this.setState({solidityDrive: files});
-  
+     
     } catch (error) {
-      console.log(error);
+      console.log(error); 
     }
     
   }
@@ -113,6 +123,8 @@ class App extends Component {
   }
 
   render() {
+    const {solidityDrive} = this.state;
+
     if (!this.state.web3) {
       return <div>Loading Web3, accounts, and contract...</div>;
     }
@@ -123,17 +135,21 @@ class App extends Component {
           <Table>
             <thead>
               <tr>
-                <th width="7%" scope="row" >Type</th>
+                <th width="1%" scope="row" >Type</th>
                 <th className="text-left" >File Name</th>
                 <th className="text-right" >Date</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <th><FileIcon  extension="docx" {...defaultStyles.docx} /></th>
-                <th className="text-left" >File Name.docx</th>
-                <th className="text-right"  >2021/09/11</th>
-              </tr>
+              {solidityDrive !== [] ? solidityDrive.map((item, key) => (
+                <tr>
+                 <th><FileIcon  extension={item[2]} {...defaultStyles[item[2]]} /></th>
+                 <th className="text-left" ><a href={"https://ipfs.infura.io/ipfs/" + item[0]}>{item[1]}</a></th>
+                 <th className="text-right"  >
+                   <Moment format="YYYY/MM/DD" unix >{item[3]}</Moment>
+                 </th>
+               </tr>
+                )) : null}
             </tbody>
           </Table>
         </div>
